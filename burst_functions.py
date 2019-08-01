@@ -184,3 +184,41 @@ def get_burst_features(monkey, days, f_beta, f_lowpass, Fs, n_bins, df=None):
                     df_burst['period_med'][i] = period_med
                 df_burst_features = pd.concat([df_burst_features, df_burst])
     return df_burst_features
+
+def plot_trial(monkey, d, el, trial, f_beta,  filtered = True):
+    ## import packages
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from bycycle.filt import lowpass_filter
+    import pandas as pd
+    from bycycle.filt import bandpass_filter
+    pd.options.display.max_columns = 50
+    Fs = 781
+    length_data = 1564
+    data_load = get_data(monkey, d)
+    ## make trials
+    signals = data_load[el, (trial-1) * length_data: (trial * length_data)]
+    signals = lowpass_filter(signals, Fs, 40, N_seconds=.1, remove_edge_artifacts=False)
+    signals = signals[391:1172]
+    #if filtered == True:
+    #    signals = bandpass_filter(signals, Fs, f_beta, N_cycles=2, remove_edge_artifacts=False)
+    # plot signal
+    T = len(signals) / Fs
+    t = np.arange(0, T, 1 / Fs)
+    fig, ax = plt.subplots(figsize=(16, 3))
+    ax.plot(t, signals, 'k')
+    #ax.xlim((0, T))
+    return ax
+
+
+def plot_burst(monkey, d, el, trial, f_beta,  filtered = True):
+    import pandas as pd
+    ax = plot_trial(monkey, d, el, trial, f_beta, filtered)
+    # get trial information
+    df_monkey = pd.read_pickle('34783_' + monkey + '_df_' + str(f_beta))
+    df_subset = df_monkey[(df_monkey['day'] == d) & (df_monkey['electrode'] == el) & (df_monkey['trial'] == trial)]
+    df_subset['onset_ms'] = (df_subset['onset']- 391) / 781
+    df_subset['end_ms'] = (df_subset['end'] - 391) / 781
+    for burst in range(len(df_subset)):
+        ax.fill_between([df_subset['onset_ms'][burst], df_subset['end_ms'][burst]], -60, 60, facecolor='red', alpha=0.5)
+
